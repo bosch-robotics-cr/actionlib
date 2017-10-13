@@ -38,6 +38,7 @@
 #define ACTIONLIB__SERVER__SIMPLE_ACTION_SERVER_IMP_H_
 
 #include <string>
+#include <tracetools/tracetools.h>
 
 namespace actionlib
 {
@@ -47,9 +48,11 @@ SimpleActionServer<ActionSpec>::SimpleActionServer(std::string name,
   ExecuteCallback execute_callback,
   bool auto_start)
 : new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false), execute_callback_(
-    execute_callback), execute_thread_(NULL), need_to_terminate_(false)
+    execute_callback), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
   if (execute_callback_ != NULL) {
+	  ros::trace::fn_name_info((const void*)execute_callback_.
+	  functor.func_ptr, (const void*)execute_callback_.functor.func_ptr);
     execute_thread_ = new boost::thread(boost::bind(&SimpleActionServer::executeLoop, this));
   }
 
@@ -63,7 +66,7 @@ SimpleActionServer<ActionSpec>::SimpleActionServer(std::string name,
 template<class ActionSpec>
 SimpleActionServer<ActionSpec>::SimpleActionServer(std::string name, bool auto_start)
 : new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false), execute_callback_(
-    NULL), execute_thread_(NULL), need_to_terminate_(false)
+    NULL), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
   // create the action server
   as_ = boost::shared_ptr<ActionServer<ActionSpec> >(new ActionServer<ActionSpec>(n_, name,
@@ -80,8 +83,12 @@ template<class ActionSpec>
 SimpleActionServer<ActionSpec>::SimpleActionServer(std::string name,
   ExecuteCallback execute_callback)
 : new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false), execute_callback_(
-    execute_callback), execute_thread_(NULL), need_to_terminate_(false)
+    execute_callback), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
+  if(execute_callback_ != NULL) {
+      ros::trace::fn_name_info((const void*)execute_callback_.
+	    functor.func_ptr, (const void*)execute_callback_.functor.func_ptr);
+  }
   // create the action server
   as_ = boost::shared_ptr<ActionServer<ActionSpec> >(new ActionServer<ActionSpec>(n_, name,
       boost::bind(&SimpleActionServer::goalCallback, this, _1),
@@ -99,8 +106,12 @@ SimpleActionServer<ActionSpec>::SimpleActionServer(ros::NodeHandle n, std::strin
   ExecuteCallback execute_callback,
   bool auto_start)
 : n_(n), new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false),
-  execute_callback_(execute_callback), execute_thread_(NULL), need_to_terminate_(false)
+  execute_callback_(execute_callback), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
+  if(execute_callback_ != NULL) {
+    ros::trace::fn_name_info((const void*)execute_callback_.
+	    functor.func_ptr, (const void*)execute_callback_.functor.func_ptr);
+  }
   // create the action server
   as_ = boost::shared_ptr<ActionServer<ActionSpec> >(new ActionServer<ActionSpec>(n, name,
       boost::bind(&SimpleActionServer::goalCallback, this, _1),
@@ -116,8 +127,13 @@ template<class ActionSpec>
 SimpleActionServer<ActionSpec>::SimpleActionServer(ros::NodeHandle n, std::string name,
   bool auto_start)
 : n_(n), new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false),
-  execute_callback_(NULL), execute_thread_(NULL), need_to_terminate_(false)
+  execute_callback_(NULL), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
+  if(execute_callback_ != NULL) {
+    ros::trace::fn_name_info((const void*)execute_callback_.
+	    functor.func_ptr, (const void*)execute_callback_.functor.func_ptr);
+  }
+  
   // create the action server
   as_ = boost::shared_ptr<ActionServer<ActionSpec> >(new ActionServer<ActionSpec>(n, name,
       boost::bind(&SimpleActionServer::goalCallback, this, _1),
@@ -133,8 +149,12 @@ template<class ActionSpec>
 SimpleActionServer<ActionSpec>::SimpleActionServer(ros::NodeHandle n, std::string name,
   ExecuteCallback execute_callback)
 : n_(n), new_goal_(false), preempt_request_(false), new_goal_preempt_request_(false),
-  execute_callback_(execute_callback), execute_thread_(NULL), need_to_terminate_(false)
+  execute_callback_(execute_callback), execute_thread_(NULL), need_to_terminate_(false), name_(name)
 {
+  if(execute_callback_ != NULL) {
+    ros::trace::fn_name_info((const void*)execute_callback_.
+	    functor.func_ptr, (const void*)execute_callback_.functor.func_ptr);
+  }
   // create the action server
   as_ = boost::shared_ptr<ActionServer<ActionSpec> >(new ActionServer<ActionSpec>(n, name,
       boost::bind(&SimpleActionServer::goalCallback, this, _1),
@@ -366,6 +386,9 @@ void SimpleActionServer<ActionSpec>::preemptCallback(GoalHandle preempt)
 template<class ActionSpec>
 void SimpleActionServer<ActionSpec>::executeLoop()
 {
+  ros::trace::task_init("SimpleActionServer::executeLoop", 
+	name_.c_str());
+	
   ros::Duration loop_duration = ros::Duration().fromSec(.1);
 
   while (n_.ok()) {
@@ -388,7 +411,12 @@ void SimpleActionServer<ActionSpec>::executeLoop()
       {
         // Make sure we're not locked when we call execute
         boost::reverse_lock<boost::recursive_mutex::scoped_lock> unlocker(lock);
+        ros::trace::call_start((void*)execute_callback_.functor.func_ptr,
+			goal.get(), 0);
         execute_callback_(goal);
+        ros::trace::call_end((void*)execute_callback_.functor.func_ptr,
+			goal.get(), 0);
+        
       }
 
       if (isActive()) {

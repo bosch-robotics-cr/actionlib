@@ -28,6 +28,7 @@
   <depend>rospy</depend>
   <depend>rostest</depend>
   <depend>std_msgs</depend>
+  <depend>tracetools</depend>
 
   <exec_depend>message_runtime</exec_depend>
   <exec_depend>python-wxtools</exec_depend>

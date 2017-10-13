@@ -248,6 +248,8 @@ private:
 
   boost::mutex terminate_mutex_;
   bool need_to_terminate_;
+  
+  std::string name_;
 };
 
 }  // namespace actionlib
